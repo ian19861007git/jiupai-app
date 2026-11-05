@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>揪排</title>
+<meta name="description" content="揪排：排球報名、候補、繳費與 MVP 投票">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#F0EFEA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11141D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="揪排">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<style>
+:root{color-scheme:light dark;--bg:#F0EFEA;--ink:#1F2537;--sec:#727789;--gold:#9A7224;--pri:#1F2A44;--on-pri:#F6EBD0}
+@media (prefers-color-scheme:dark){:root{--bg:#11141D;--ink:#ECE6D8;--sec:#9097A8;--gold:#E2B65C;--pri:#E2B65C;--on-pri:#11141D}}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+ font-family:"Noto Sans TC",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+#sp{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;text-align:center}
+#sp img{width:88px;height:88px;border-radius:20px}
+#sp h1{margin:6px 0 0;font-size:22px;font-weight:500;letter-spacing:.5em;text-indent:.5em}
+#sp .rule{width:28px;height:1px;background:var(--gold)}
+#msg{font-size:13.5px;color:var(--sec);letter-spacing:.08em;line-height:1.8;min-height:1.8em}
+#retry{display:none;border:none;background:var(--pri);color:var(--on-pri);border-radius:3px;padding:11px 28px;font:inherit;font-size:14px;letter-spacing:.2em;cursor:pointer}
+.spin{display:inline-block;width:12px;height:12px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;
+ vertical-align:-1px;margin-right:6px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="sp">
+  <img src="icons/icon-192.png" alt="">
+  <h1>揪排</h1>
+  <div class="rule"></div>
+  <div id="msg"><span class="spin"></span>載入中</div>
+  <button id="retry" onclick="location.reload()">重新整理</button>
+</div>
+<script>
+/* 揪排 App 外殼：畫面內容由揪排的 Apps Script 提供（和 LINE 裡的揪排 App 同一份），
+   第一次開啟時下載後存在手機上，之後開啟直接顯示，背景再檢查有沒有新版本。
+   這裡沒有任何金鑰或個人資料；登入、資料讀寫都在 Apps Script 端驗證。 */
+(function(){
+  var API = 'https://script.google.com/macros/s/AKfycbySN8lqTN4g7ob7VzLR13hkA2la0JAd4EVjAFx_KXw_Ft4w-ozrmvDFVn4RyBNb_a16jQ/exec';
+  function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+  function show(html){ document.open(); document.write(html); document.close(); }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+
+  var page = get('jp_pwa_page');
+  // 上次開到一半就停住（畫面可能壞了）→ 這次改抓最新版
+  var tried = Number(get('jp_pwa_try') || 0);
+  if (page && !(tried && Date.now() - tried > 20000)){
+    set('jp_pwa_try', String(Date.now()));
+    show(page);
+    return;
+  }
+  var msg = document.getElementById('msg');
+  function load(n){
+    fetch(API + '?pwa=page', { credentials: 'omit', cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (!j || !j.ok || !j.html){ var err = new Error((j && j.e) || ''); err.jp = 1; throw err; }
+        set('jp_pwa_page', j.html); set('jp_pwa_ver', j.ver || ''); set('jp_pwa_try', String(Date.now()));
+        show(j.html);
+      })
+      .catch(function(e){
+        if (n < 2){ msg.innerHTML = '<span class="spin"></span>連線中，請稍候'; setTimeout(function(){ load(n + 1); }, 1500); return; }
+        msg.textContent = (e && e.jp && e.message) ? e.message : '連線失敗，請確認網路後再試一次';
+        document.getElementById('retry').style.display = 'inline-block';
+      });
+  }
+  load(0);
+})();
+</script>
+</body>
+</html>
