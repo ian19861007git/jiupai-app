@@ -1,6 +1,6 @@
 /* 揪排 App service worker：快取外殼（沒網路也開得起來）、收推播、點通知打開 App。
    推播內容由揪排的 Apps Script 加密送出（標準 Web Push），這裡只負責顯示。全部免費。 */
-var CACHE = 'jiupai-shell-v1';
+var CACHE = 'jiupai-shell-v2';
 var SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   './icons/icon-512-maskable.png', './icons/apple-touch-icon.png', './icons/badge-72.png'];
 
@@ -21,7 +21,8 @@ self.addEventListener('fetch', function (e) {
   if (url.origin !== self.location.origin) return;   // Apps Script、字型等外部請求不攔
   if (req.mode === 'navigate') {
     // 外殼頁：先上網抓最新的，沒網路才用快取
-    e.respondWith(fetch(req).then(function (res) {
+    // 外殼頁每次都向 GitHub 確認有沒有新版（cache: no-cache），修正才不會被手機快取卡住
+    e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
       if (res && res.ok) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put('./', copy); }); }
       return res;
     }).catch(function () { return caches.match('./', { ignoreSearch: true }); }));

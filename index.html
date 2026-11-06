@@ -46,7 +46,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
   var API = 'https://script.google.com/macros/s/AKfycbySN8lqTN4g7ob7VzLR13hkA2la0JAd4EVjAFx_KXw_Ft4w-ozrmvDFVn4RyBNb_a16jQ/exec';
   function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
-  function show(html){ document.open(); document.write(html); document.close(); }
+  // ★ 一定要等載入畫面本身解析完才換頁：解析中呼叫 document.open() 會被瀏覽器忽略，
+  //   document.write 會把揪排畫面「接在」載入畫面後面，變成一直轉圈、App 被擠到最下面
+  function show(html){
+    var go = function(){ setTimeout(function(){ document.open(); document.write(html); document.close(); }, 0); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+  }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 
   var page = get('jp_pwa_page');
